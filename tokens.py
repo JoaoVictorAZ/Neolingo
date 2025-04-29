@@ -7,8 +7,10 @@ class TokenType(Enum):
     BOOLEAN_KW = "BOOLEAN_KW"
     STRING_KW = "STRING_KW"
     CHAR_KW = "CHAR_KW"
+    LER = "LER"
+    ESCREVA = "ESCREVA"
 
-    # Literais
+    # Básicos
     NUMBER = "NUMBER"
     FLOAT = "FLOAT"
     STRING = "STRING"
@@ -18,20 +20,27 @@ class TokenType(Enum):
     # Identificadores
     IDENT = "IDENT"
 
-    # Operadores e símbolos
+    # Operadores Aritméticos
     PLUS = "+"
     MINUS = "-"
     TIMES = "*"
     DIVIDE = "/"
-    ASSIGN = "="
+    EXPONENTIATION = "**"
+
+    # Operadores Compostos
     PLUS_ASSIGN = "+="
     MINUS_ASSIGN = "-="
     TIMES_ASSIGN = "*="
     DIVIDE_ASSIGN = "/="
+
+    # Operadores Unários / Lógicos
+    NOT = "!"
+    
+    # Símbolos
+    ASSIGN = "="
     SEMICOLON = ";"
     LPAREN = "("
     RPAREN = ")"
-    NOT = "!"
 
     # Fim do arquivo
     EOF = "EOF"

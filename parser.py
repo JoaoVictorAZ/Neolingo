@@ -1,5 +1,5 @@
 from tokens import TokenType
-from arv_sint import BinOp, Number, Variable, Declaration, Assignment
+from arv_sint import BinOp, Number, Variable, Declaration, Assignment, UnaryOp, WriteStatement, ReadStatement
 
 class Parser:
     def __init__(self, tokens):
@@ -36,6 +36,19 @@ class Parser:
             return self.parse_declaration()
         elif tok.type == TokenType.IDENT:
             return self.parse_assignment()
+        elif tok.type == TokenType.ESCREVA:
+            self.eat(TokenType.ESCREVA)
+            expr = self.parse_expr()
+            self.eat(TokenType.SEMICOLON)
+            return WriteStatement(expr)
+        elif tok.type == TokenType.LER:
+            self.eat(TokenType.LER)
+            self.eat(TokenType.LPAREN)
+            var_name = self.current().value
+            self.eat(TokenType.IDENT)
+            self.eat(TokenType.RPAREN)
+            self.eat(TokenType.SEMICOLON)
+            return ReadStatement(var_name)
         else:
             raise SyntaxError(f"Unexpected start of statement: {tok}")
 
@@ -50,24 +63,59 @@ class Parser:
     def parse_assignment(self):
         name_token = self.current()
         self.eat(TokenType.IDENT)
-        self.eat(TokenType.ASSIGN)
-        expr = self.parse_expr()
-        self.eat(TokenType.SEMICOLON)
-        return Assignment(name_token.value, expr)
-
+        
+        current_type = self.current().type
+        
+        if current_type == TokenType.ASSIGN:
+            self.eat(TokenType.ASSIGN)
+            expr = self.parse_expr()
+            self.eat(TokenType.SEMICOLON)
+            return Assignment(name_token.value, expr)
+        
+        elif current_type in {
+            TokenType.PLUS_ASSIGN, TokenType.MINUS_ASSIGN,
+            TokenType.TIMES_ASSIGN, TokenType.DIVIDE_ASSIGN
+        }:
+            op = self.current().type
+            self.eat(op)
+            expr = self.parse_expr()
+            self.eat(TokenType.SEMICOLON)
+            
+            # Transforma `a += b` em `a = a + b`
+            actual_op = {
+                TokenType.PLUS_ASSIGN: TokenType.PLUS,
+                TokenType.MINUS_ASSIGN: TokenType.MINUS,
+                TokenType.TIMES_ASSIGN: TokenType.TIMES,
+                TokenType.DIVIDE_ASSIGN: TokenType.DIVIDE
+            }[op]
+            
+            binop = BinOp(Variable(name_token.value), actual_op, expr)
+            return Assignment(name_token.value, binop)
+        
+        else:
+            raise SyntaxError(f"Expected assignment operator, got {current_type}")
+    
     def parse_expr(self):
         node = self.parse_term()
-        while self.current().type in (TokenType.PLUS, TokenType.MINUS):
+        while self.current().type in (TokenType.PLUS, TokenType.MINUS, TokenType.PLUS_ASSIGN, TokenType.MINUS_ASSIGN):
             op = self.current()
             self.eat(op.type)
             node = BinOp(node, op.type, self.parse_term())
         return node
 
     def parse_term(self):
-        node = self.parse_factor()
-        while self.current().type in (TokenType.TIMES, TokenType.DIVIDE):
+        node = self.parse_exponent()
+        while self.current().type in (TokenType.TIMES, TokenType.DIVIDE, TokenType.TIMES_ASSIGN, TokenType.DIVIDE_ASSIGN):
             op = self.current()
             self.eat(op.type)
+            node = BinOp(node, op.type, self.parse_exponent())
+        return node
+
+    def parse_exponent(self):
+        node = self.parse_factor()
+        while self.current().type == TokenType.EXPONENTIATION:
+            op = self.current()
+            self.eat(TokenType.EXPONENTIATION)
             node = BinOp(node, op.type, self.parse_factor())
         return node
 
@@ -76,12 +124,16 @@ class Parser:
         if tok.type == TokenType.NUMBER:
             self.eat(TokenType.NUMBER)
             return Number(int(tok.value))
-        elif tok.type == TokenType.FLOAT:
-            self.eat(TokenType.FLOAT)
-            return Number(float(tok.value))
         elif tok.type == TokenType.IDENT:
             self.eat(TokenType.IDENT)
             return Variable(tok.value)
+        elif tok.type in (TokenType.PLUS, TokenType.MINUS):
+            op = tok.type
+            self.eat(tok.type)
+            return UnaryOp(op, self.parse_factor())
+        elif tok.type == TokenType.NOT:
+            self.eat(TokenType.NOT)
+            return UnaryOp(TokenType.NOT, self.parse_factor())
         elif tok.type == TokenType.LPAREN:
             self.eat(TokenType.LPAREN)
             node = self.parse_expr()

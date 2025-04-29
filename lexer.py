@@ -11,6 +11,19 @@ class Token:
 
 def tokenize(code):
     token_specification = [
+        # Operadores compostos (prioridade mais alta para evitar conflito com os simples)
+        ('PLUS_ASSIGN', r'\+='),
+        ('MINUS_ASSIGN', r'-='),
+        ('TIMES_ASSIGN', r'\*='),
+        ('DIVIDE_ASSIGN', r'/='),
+
+        # Operadores simples
+        ('PLUS',      r'\+'),
+        ('MINUS',     r'-'),
+        ('TIMES',     r'\*'),
+        ('DIVIDE',    r'/'),
+        ('ASSIGN',    r'='),
+
         # Literais
         ('FLOAT',     r'\d+\.\d+'),
         ('NUMBER',    r'\d+'),
@@ -25,21 +38,20 @@ def tokenize(code):
         ('STRING_KW', r'\bstring\b'),
         ('CHAR_KW',   r'\bchar\b'),
 
-        # Operadores e símbolos
-        ('PLUS',      r'\+'),
-        ('MINUS',     r'-'),
-        ('TIMES',     r'\*'),
-        ('DIVIDE',    r'/'),
-        ('ASSIGN',    r'='),
+        # Parênteses
         ('LPAREN',    r'\('),
         ('RPAREN',    r'\)'),
-        ('SEMICOLON',      r';'),
+
+        # Pontuação
+        ('SEMICOLON', r';'),
 
         # Identificadores e ignorados
         ('IDENT',     r'[A-Za-z_]\w*'),
         ('SKIP',      r'[ \t\n]+'),
         ('MISMATCH',  r'.'),
     ]
+    
+    # Construção do regex com base nas especificações dos tokens
     tok_regex = '|'.join(f'(?P<{name}>{pattern})' for name, pattern in token_specification)
     get_token = re.compile(tok_regex).match
     line = code
@@ -53,13 +65,15 @@ def tokenize(code):
         kind = match.lastgroup
         value = match.group()
         if kind == 'SKIP':
-            pass
+            pass  # Ignorar espaços em branco e novas linhas
         elif kind == 'MISMATCH':
             raise RuntimeError(f"Unexpected token: {value}")
         else:
+            # Atribuir o tipo de token conforme o TokenType
             token_type = TokenType[kind] if kind in TokenType.__members__ else TokenType.IDENT
             tokens.append(Token(token_type, value))
         pos = match.end()
-    
+
+    # Adiciona o token de EOF
     tokens.append(Token(TokenType.EOF, ''))
     return tokens
